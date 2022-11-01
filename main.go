@@ -127,7 +127,7 @@ func download(uri string, size int64, save string) bool {
 	wg.Add(1)
 	fileDl.OnStart(func() {
 		fmt.Printf("开始下载：%s\n", uri)
-		format := "\r%v/%v [%s] %v KB/s %v  \t\t\t"
+		format := "%v/%v [%s] %v KB/s %v\n"
 		for {
 			status := fileDl.GetStatus()
 			var i = float64(status.Downloaded) / float64(fileDl.Size) * 50
@@ -137,6 +137,7 @@ func download(uri string, size int64, save string) bool {
 			case <-exit:
 				fmt.Printf(format, status.Downloaded, fileDl.Size, h, 0, "[FINISH]")
 				fmt.Printf("\n下载完成：%s\n", save)
+				os.Stdout.Sync()
 				wg.Done()
 			default:
 				if !pause {
@@ -145,7 +146,6 @@ func download(uri string, size int64, save string) bool {
 					os.Stdout.Sync()
 				} else {
 					fmt.Printf(format, status.Downloaded, fileDl.Size, h, 0, "[PAUSE]")
-					os.Stdout.Sync()
 					<-resume
 					pause = false
 				}
