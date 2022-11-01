@@ -1,0 +1,31 @@
+name: Go
+
+on:
+  schedule:
+    # 定时任务，每周三中午十二点执行
+    - cron: "0 18 * * 3"
+  push:
+    tags:
+      - '*'
+  
+jobs:
+  build_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.18
+
+    - name: Build
+      run: |
+        go build -ldflags="-s -w" -o AnimeGoData main.go && ./AnimeGoData && zip bolt_sub.zip bolt_sub.db && zip bolt_ep.zip bolt_ep.db
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: "bolt*.zip"
+        bodyFile: ""
+        token: ${{secrets.GITHUB_TOKEN}}

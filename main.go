@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/iovxw/downloader"
 	"github.com/parnurzeal/gorequest"
+	"github.com/wetor/AnimeGo/pkg/anisource/bangumi"
+	"github.com/wetor/AnimeGo/pkg/cache"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,29 +20,29 @@ import (
 
 const (
 	BangumiArchiveRelease = "https://api.github.com/repos/bangumi/Archive/releases/latest"
-	SubjectBucket = "bangumi_sub"
-	SubjectDB = "bolt_sub.db"
-	EpisodeBucket = "bangumi_ep"
-	EpisodeDB = "bolt_ep.db"
+	SubjectBucket         = "bangumi_sub"
+	SubjectDB             = "bolt_sub.db"
+	EpisodeBucket         = "bangumi_ep"
+	EpisodeDB             = "bolt_ep.db"
 )
 
 type GithubRelease struct {
-	Assets []struct{
-		Name string `json:"name"`
-		Size int64 `json:"size"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		BrowserDownloadUrl string `json:"browser_download_url"`
-	}`json:"assets"`
+	Assets []struct {
+		Name               string    `json:"name"`
+		Size               int64     `json:"size"`
+		CreatedAt          time.Time `json:"created_at"`
+		UpdatedAt          time.Time `json:"updated_at"`
+		BrowserDownloadUrl string    `json:"browser_download_url"`
+	} `json:"assets"`
 }
 
 var (
-	SubjectMap map[int64]*Subject
-	EpisodeMap map[int64][]*Episode
-	SubjectIndex []int64
+	SubjectMap   map[int]*bangumi.Entity
+	EpisodeMap   map[int][]*bangumi.Ep
+	SubjectIndex []int
 )
 
-func main(){
+func main() {
 	fmt.Println("--------------------------------")
 	fmt.Println("获取bangumi最新下载地址")
 	release := GithubRelease{}
@@ -51,7 +53,7 @@ func main(){
 		return
 	}
 	fmt.Println(release)
-	if len(release.Assets) ==0 {
+	if len(release.Assets) == 0 {
 		fmt.Println("未找到release")
 		return
 	}
@@ -65,7 +67,7 @@ func main(){
 	}
 	fmt.Println("--------------------------------")
 	fmt.Println("解压bangumi数据")
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
 
 	err := UnZip(".", filename)
 	if err != nil {
@@ -74,7 +76,7 @@ func main(){
 	}
 	fmt.Println("--------------------------------")
 	fmt.Println("清洗bangumi数据")
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
 	result = CleanSubject("subject.jsonlines")
 	if !result {
 		fmt.Println("清洗Subject失败")
@@ -104,7 +106,7 @@ func main(){
 	fmt.Println("数据处理完成！")
 }
 
-func download(uri string, size int64, save string) bool{
+func download(uri string, size int64, save string) bool {
 	start := time.Now()
 
 	file, err := os.Create(save)
@@ -139,7 +141,7 @@ func download(uri string, size int64, save string) bool{
 			default:
 				if !pause {
 					time.Sleep(time.Second * 1)
-					fmt.Printf(format, status.Downloaded, fileDl.Size, h, status.Speeds / 1024, "[DOWNLOADING]")
+					fmt.Printf(format, status.Downloaded, fileDl.Size, h, status.Speeds/1024, "[DOWNLOADING]")
 					os.Stdout.Sync()
 				} else {
 					fmt.Printf(format, status.Downloaded, fileDl.Size, h, 0, "[PAUSE]")
@@ -175,7 +177,6 @@ func download(uri string, size int64, save string) bool{
 	return true
 }
 
-
 func UnZip(dst, src string) (err error) {
 	start := time.Now()
 	// 打开压缩文件，这个 zip 包有个方便的 ReadCloser 类型
@@ -196,7 +197,7 @@ func UnZip(dst, src string) (err error) {
 	// 遍历 zr ，将文件写入到磁盘
 	for _, file := range zr.File {
 		fmt.Println("解压文件：", file.Name)
-		if file.Name != "subject.jsonlines" && file.Name != "episode.jsonlines"{
+		if file.Name != "subject.jsonlines" && file.Name != "episode.jsonlines" {
 			fmt.Println("跳过")
 			continue
 		}
@@ -242,13 +243,12 @@ func UnZip(dst, src string) (err error) {
 	return nil
 }
 
-
 func CleanSubject(src string) bool {
 	start := time.Now()
-	SubjectMap = make(map[int64]*Subject)
-	SubjectIndex = make([]int64, 0, 128*1024)
+	SubjectMap = make(map[int]*bangumi.Entity)
+	SubjectIndex = make([]int, 0, 128*1024)
 	err := ReadFile(src, func(s string) {
-		sub := &Subject{}
+		sub := &bangumi.Entity{}
 		err := json.Unmarshal([]byte(s), sub)
 		if err != nil {
 			fmt.Println("失败，", err, s)
@@ -270,9 +270,9 @@ func CleanSubject(src string) bool {
 
 func CleanEpisode(src string) bool {
 	start := time.Now()
-	EpisodeMap = make(map[int64][]*Episode)
+	EpisodeMap = make(map[int][]*bangumi.Ep)
 	err := ReadFile(src, func(s string) {
-		ep := &Episode{}
+		ep := &bangumi.Ep{}
 		err := json.Unmarshal([]byte(s), ep)
 		if err != nil {
 			fmt.Println("失败，", err, s)
@@ -283,7 +283,7 @@ func CleanEpisode(src string) bool {
 		}
 		eps, ok := EpisodeMap[ep.SubjectID]
 		if !ok {
-			eps = make([]*Episode, 0, 16)
+			eps = make([]*bangumi.Ep, 0, 16)
 		}
 		eps = append(eps, ep)
 		EpisodeMap[ep.SubjectID] = eps
@@ -312,7 +312,7 @@ func ReadFile(filePath string, handle func(string)) error {
 		line = strings.TrimSpace(line)
 		handle(line)
 		if err != nil {
-			if err == io.EOF{
+			if err == io.EOF {
 				return nil
 			}
 			return err
@@ -321,7 +321,7 @@ func ReadFile(filePath string, handle func(string)) error {
 	return nil
 }
 
-func UpdateSubject(){
+func UpdateSubject() {
 	for _, id := range SubjectIndex {
 		eps, ok := EpisodeMap[id]
 		if !ok {
@@ -339,9 +339,9 @@ func UpdateSubject(){
 // SaveSubjectBolt 保存subject信息的数据
 func SaveSubjectBolt(dst string) bool {
 	start := time.Now()
-	gob.Register(&Subject{})
+	gob.Register(&bangumi.Entity{})
 
-	db := NewBolt()
+	db := cache.NewBolt()
 	db.Open(dst)
 	defer db.Close()
 	db.Add(SubjectBucket)
@@ -357,9 +357,9 @@ func SaveSubjectBolt(dst string) bool {
 // SaveEpisodeBolt 保存ep信息的数据
 func SaveEpisodeBolt(dst string) bool {
 	start := time.Now()
-	gob.Register(&Episode{})
+	gob.Register(&bangumi.Ep{})
 
-	db := NewBolt()
+	db := cache.NewBolt()
 	db.Open(dst)
 	defer db.Close()
 	db.Add(EpisodeBucket)
