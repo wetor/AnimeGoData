@@ -3,12 +3,7 @@ module dataclean
 go 1.18
 
 require (
-	github.com/boltdb/bolt v1.3.1
 	github.com/iovxw/downloader v0.1.1
-	github.com/parnurzeal/gorequest v0.2.16
-)
-
-require (
 	github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect

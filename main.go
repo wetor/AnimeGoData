@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/iovxw/downloader"
-	"github.com/parnurzeal/gorequest"
 	"github.com/wetor/AnimeGo/pkg/anisource/bangumi"
 	"github.com/wetor/AnimeGo/pkg/cache"
 	"io"
@@ -19,22 +18,13 @@ import (
 )
 
 const (
-	BangumiArchiveRelease = "https://api.github.com/repos/bangumi/Archive/releases/latest"
-	SubjectBucket         = "bangumi_sub"
-	SubjectDB             = "bolt_sub.db"
-	EpisodeBucket         = "bangumi_ep"
-	EpisodeDB             = "bolt_ep.db"
+	BangumiArchive = "https://github.com/bangumi/Archive/releases/download/archive/dump.zip"
+	ArchiveName    = "dump.zip"
+	SubjectBucket  = "bangumi_sub"
+	SubjectDB      = "bolt_sub.db"
+	EpisodeBucket  = "bangumi_ep"
+	EpisodeDB      = "bolt_ep.db"
 )
-
-type GithubRelease struct {
-	Assets []struct {
-		Name               string    `json:"name"`
-		Size               int64     `json:"size"`
-		CreatedAt          time.Time `json:"created_at"`
-		UpdatedAt          time.Time `json:"updated_at"`
-		BrowserDownloadUrl string    `json:"browser_download_url"`
-	} `json:"assets"`
-}
 
 var (
 	SubjectMap   map[int]*bangumi.Entity
@@ -44,23 +34,8 @@ var (
 
 func main() {
 	fmt.Println("--------------------------------")
-	fmt.Println("获取bangumi最新下载地址")
-	release := GithubRelease{}
-	req := gorequest.New()
-	_, _, errs := req.Get(BangumiArchiveRelease).EndStruct(&release)
-	if errs != nil {
-		fmt.Println(errs)
-		return
-	}
-	fmt.Println(release)
-	if len(release.Assets) == 0 {
-		fmt.Println("未找到release")
-		return
-	}
-	fmt.Println("--------------------------------")
 	fmt.Println("下载bangumi数据")
-	filename := release.Assets[0].Name
-	result := download(release.Assets[0].BrowserDownloadUrl, release.Assets[0].Size, filename)
+	result := download(BangumiArchive, -1, ArchiveName)
 	if !result {
 		fmt.Println("下载失败")
 		return
@@ -69,7 +44,7 @@ func main() {
 	fmt.Println("解压bangumi数据")
 	time.Sleep(1 * time.Second)
 
-	err := UnZip(".", filename)
+	err := UnZip(".", ArchiveName)
 	if err != nil {
 		fmt.Println("解压失败", err)
 		return
@@ -126,11 +101,11 @@ func download(uri string, size int64, save string) bool {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	fileDl.OnStart(func() {
-		fmt.Printf("开始下载：%s\n", uri)
+		fmt.Println("开始下载：", uri)
 		for {
 			select {
 			case <-exit:
-				fmt.Printf("\n下载完成：%s\n", save)
+				fmt.Println("下载完成：", save)
 				wg.Done()
 			default:
 				if !pause {
@@ -169,15 +144,11 @@ func download(uri string, size int64, save string) bool {
 
 func UnZip(dst, src string) (err error) {
 	start := time.Now()
-	// 打开压缩文件，这个 zip 包有个方便的 ReadCloser 类型
-	// 这个里面有个方便的 OpenReader 函数，可以比 tar 的时候省去一个打开文件的步骤
 	zr, err := zip.OpenReader(src)
 	defer zr.Close()
 	if err != nil {
 		return
 	}
-
-	// 如果解压后不是放在当前目录就按照保存目录去创建目录
 	if dst != "" {
 		if err := os.MkdirAll(dst, 0755); err != nil {
 			return err
@@ -186,11 +157,10 @@ func UnZip(dst, src string) (err error) {
 
 	// 遍历 zr ，将文件写入到磁盘
 	for _, file := range zr.File {
-		fmt.Println("解压文件：", file.Name)
 		if file.Name != "subject.jsonlines" && file.Name != "episode.jsonlines" {
-			fmt.Println("跳过")
 			continue
 		}
+		fmt.Println("解压文件：", file.Name)
 		path := filepath.Join(dst, file.Name)
 
 		// 如果是目录，就创建目录
@@ -198,7 +168,6 @@ func UnZip(dst, src string) (err error) {
 			if err := os.MkdirAll(path, file.Mode()); err != nil {
 				return err
 			}
-			// 因为是目录，跳过当前循环，因为后面都是文件的处理
 			continue
 		}
 
@@ -222,9 +191,6 @@ func UnZip(dst, src string) (err error) {
 		// 将解压的结果输出
 		fmt.Printf("成功解压 %s ，共写入了 %d 个字符的数据\n", path, n)
 
-		// 因为是在循环中，无法使用 defer ，直接放在最后
-		// 不过这样也有问题，当出现 err 的时候就不会执行这个了，
-		// 可以把它单独放在一个函数中，这里是个实验，就这样了
 		fw.Close()
 		fr.Close()
 	}
