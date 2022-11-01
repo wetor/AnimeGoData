@@ -26,7 +26,9 @@ jobs:
         go build -ldflags="-s -w" -o AnimeGoData main.go && ./AnimeGoData && zip bolt_sub.zip bolt_sub.db && zip bolt_ep.zip bolt_ep.db
     - uses: ncipollo/release-action@v1
       with:
-        name: "AnimeGoData"
         artifacts: "bolt*.zip"
         bodyFile: ""
         token: ${{secrets.GITHUB_TOKEN}}
+        allowUpdates: true
+        tag: "v1.0.0"
+        name: "AnimeGoData"

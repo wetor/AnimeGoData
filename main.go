@@ -127,25 +127,15 @@ func download(uri string, size int64, save string) bool {
 	wg.Add(1)
 	fileDl.OnStart(func() {
 		fmt.Printf("开始下载：%s\n", uri)
-		format := "%v/%v [%s] %v KB/s %v\n"
 		for {
-			status := fileDl.GetStatus()
-			var i = float64(status.Downloaded) / float64(fileDl.Size) * 50
-			h := strings.Repeat("=", int(i)) + strings.Repeat(" ", 50-int(i))
-
 			select {
 			case <-exit:
-				fmt.Printf(format, status.Downloaded, fileDl.Size, h, 0, "[FINISH]")
 				fmt.Printf("\n下载完成：%s\n", save)
-				os.Stdout.Sync()
 				wg.Done()
 			default:
 				if !pause {
 					time.Sleep(time.Second * 1)
-					fmt.Printf(format, status.Downloaded, fileDl.Size, h, status.Speeds/1024, "[DOWNLOADING]")
-					os.Stdout.Sync()
 				} else {
-					fmt.Printf(format, status.Downloaded, fileDl.Size, h, 0, "[PAUSE]")
 					<-resume
 					pause = false
 				}
