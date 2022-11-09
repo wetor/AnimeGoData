@@ -33,9 +33,10 @@ var (
 )
 
 func main() {
+	var result bool
 	fmt.Println("--------------------------------")
 	fmt.Println("下载bangumi数据")
-	result := download(BangumiArchive, -1, ArchiveName)
+	result = download(BangumiArchive, -1, ArchiveName)
 	if !result {
 		fmt.Println("下载失败")
 		return
@@ -300,11 +301,14 @@ func SaveSubjectBolt(dst string) bool {
 	db := cache.NewBolt()
 	db.Open(dst)
 	defer db.Close()
-	db.Add(SubjectBucket)
-	for _, id := range SubjectIndex {
-		sub := SubjectMap[id]
-		db.Put(SubjectBucket, id, sub, 0)
+	keys := make([]interface{}, len(SubjectIndex))
+	vals := make([]interface{}, len(SubjectIndex))
+	for i, id := range SubjectIndex {
+		keys[i] = id
+		vals[i] = SubjectMap[id]
 	}
+	db.Add(SubjectBucket)
+	db.BatchPut(SubjectBucket, keys, vals, 0)
 	elapsed := time.Since(start)
 	fmt.Println("该函数执行完成耗时：", elapsed)
 	return true
@@ -318,13 +322,14 @@ func SaveEpisodeBolt(dst string) bool {
 	db := cache.NewBolt()
 	db.Open(dst)
 	defer db.Close()
-	db.Add(EpisodeBucket)
-	for _, id := range SubjectIndex {
-		eps, ok := EpisodeMap[id]
-		if ok {
-			db.Put(EpisodeBucket, id, eps, 0)
-		}
+	keys := make([]interface{}, len(SubjectIndex))
+	vals := make([]interface{}, len(SubjectIndex))
+	for i, id := range SubjectIndex {
+		keys[i] = id
+		vals[i] = EpisodeMap[id]
 	}
+	db.Add(EpisodeBucket)
+	db.BatchPut(EpisodeBucket, keys, vals, 0)
 	elapsed := time.Since(start)
 	fmt.Println("该函数执行完成耗时：", elapsed)
 	return true

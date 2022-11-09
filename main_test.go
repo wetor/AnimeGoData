@@ -12,7 +12,7 @@ func TestGet(t *testing.T) {
 	db.Open("bolt_sub.db")
 
 	sub := &bangumi.Entity{}
-	err := db.Get(SubjectBucket, int64(10380), sub)
+	err := db.Get(SubjectBucket, 10380, sub)
 	if err != nil {
 		fmt.Println(err)
 		return
