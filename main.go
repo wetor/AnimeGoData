@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/iovxw/downloader"
+	"github.com/parnurzeal/gorequest"
 	"github.com/wetor/AnimeGo/pkg/anisource/bangumi"
 	"github.com/wetor/AnimeGo/pkg/cache"
 	"io"
@@ -18,13 +19,22 @@ import (
 )
 
 const (
-	BangumiArchive = "https://github.com/bangumi/Archive/releases/download/archive/dump.zip"
-	ArchiveName    = "dump.zip"
-	SubjectBucket  = "bangumi_sub"
-	SubjectDB      = "bolt_sub.db"
-	EpisodeBucket  = "bangumi_ep"
-	EpisodeDB      = "bolt_ep.db"
+	BangumiArchiveRelease = "https://api.github.com/repos/bangumi/Archive/releases/latest"
+	SubjectBucket         = "bangumi_sub"
+	SubjectDB             = "bolt_sub.db"
+	EpisodeBucket         = "bangumi_ep"
+	EpisodeDB             = "bolt_ep.db"
 )
+
+type GithubRelease struct {
+	Assets []struct {
+		Name               string    `json:"name"`
+		Size               int64     `json:"size"`
+		CreatedAt          time.Time `json:"created_at"`
+		UpdatedAt          time.Time `json:"updated_at"`
+		BrowserDownloadUrl string    `json:"browser_download_url"`
+	} `json:"assets"`
+}
 
 var (
 	SubjectMap   map[int]*bangumi.Entity
@@ -33,10 +43,24 @@ var (
 )
 
 func main() {
-	var result bool
+	fmt.Println("--------------------------------")
+	fmt.Println("获取bangumi最新下载地址")
+	release := GithubRelease{}
+	req := gorequest.New()
+	_, _, errs := req.Get(BangumiArchiveRelease).EndStruct(&release)
+	if errs != nil {
+		fmt.Println(errs)
+		return
+	}
+	fmt.Println(release)
+	if len(release.Assets) == 0 {
+		fmt.Println("未找到release")
+		return
+	}
 	fmt.Println("--------------------------------")
 	fmt.Println("下载bangumi数据")
-	result = download(BangumiArchive, -1, ArchiveName)
+	filename := release.Assets[0].Name
+	result := download(release.Assets[0].BrowserDownloadUrl, release.Assets[0].Size, filename)
 	if !result {
 		fmt.Println("下载失败")
 		return
@@ -45,7 +69,7 @@ func main() {
 	fmt.Println("解压bangumi数据")
 	time.Sleep(1 * time.Second)
 
-	err := UnZip(".", ArchiveName)
+	err := UnZip(".", filename)
 	if err != nil {
 		fmt.Println("解压失败", err)
 		return

@@ -4,13 +4,13 @@ go 1.18
 
 require (
 	github.com/iovxw/downloader v0.1.1
+	github.com/parnurzeal/gorequest v0.2.16
 	github.com/wetor/AnimeGo v0.4.1
 )
 
 require (
 	github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
-	github.com/parnurzeal/gorequest v0.2.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
