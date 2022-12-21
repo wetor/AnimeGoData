@@ -23,7 +23,7 @@ jobs:
 
     - name: Build
       run: |
-        go build -ldflags="-s -w" -o AnimeGoData main.go && ./AnimeGoData && zip bolt_sub.zip bolt_sub.db && zip bolt_ep.zip bolt_ep.db
+        go build -ldflags="-s -w" -o AnimeGoData . && ./AnimeGoData && zip bolt_sub.zip bolt_sub.db && zip bolt_ep.zip bolt_ep.db
     - uses: ncipollo/release-action@v1
       with:
         artifacts: "bolt*.zip"

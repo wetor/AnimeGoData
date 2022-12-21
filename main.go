@@ -3,12 +3,10 @@ package main
 import (
 	"archive/zip"
 	"bufio"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"github.com/iovxw/downloader"
 	"github.com/parnurzeal/gorequest"
-	"github.com/wetor/AnimeGo/pkg/anisource/bangumi"
 	"github.com/wetor/AnimeGo/pkg/cache"
 	"io"
 	"os"
@@ -37,8 +35,8 @@ type GithubRelease struct {
 }
 
 var (
-	SubjectMap   map[int]*bangumi.Entity
-	EpisodeMap   map[int][]*bangumi.Ep
+	SubjectMap   map[int]*Entity
+	EpisodeMap   map[int][]*Ep
 	SubjectIndex []int
 )
 
@@ -226,10 +224,10 @@ func UnZip(dst, src string) (err error) {
 
 func CleanSubject(src string) bool {
 	start := time.Now()
-	SubjectMap = make(map[int]*bangumi.Entity)
+	SubjectMap = make(map[int]*Entity)
 	SubjectIndex = make([]int, 0, 128*1024)
 	err := ReadFile(src, func(s string) {
-		sub := &bangumi.Entity{}
+		sub := &Entity{}
 		err := json.Unmarshal([]byte(s), sub)
 		if err != nil {
 			fmt.Println("失败，", err, s)
@@ -251,9 +249,9 @@ func CleanSubject(src string) bool {
 
 func CleanEpisode(src string) bool {
 	start := time.Now()
-	EpisodeMap = make(map[int][]*bangumi.Ep)
+	EpisodeMap = make(map[int][]*Ep)
 	err := ReadFile(src, func(s string) {
-		ep := &bangumi.Ep{}
+		ep := &Ep{}
 		err := json.Unmarshal([]byte(s), ep)
 		if err != nil {
 			fmt.Println("失败，", err, s)
@@ -264,7 +262,7 @@ func CleanEpisode(src string) bool {
 		}
 		eps, ok := EpisodeMap[ep.SubjectID]
 		if !ok {
-			eps = make([]*bangumi.Ep, 0, 16)
+			eps = make([]*Ep, 0, 16)
 		}
 		eps = append(eps, ep)
 		EpisodeMap[ep.SubjectID] = eps
@@ -320,8 +318,6 @@ func UpdateSubject() {
 // SaveSubjectBolt 保存subject信息的数据
 func SaveSubjectBolt(dst string) bool {
 	start := time.Now()
-	gob.Register(&bangumi.Entity{})
-
 	db := cache.NewBolt()
 	db.Open(dst)
 	defer db.Close()
@@ -341,7 +337,6 @@ func SaveSubjectBolt(dst string) bool {
 // SaveEpisodeBolt 保存ep信息的数据
 func SaveEpisodeBolt(dst string) bool {
 	start := time.Now()
-	gob.Register(&bangumi.Ep{})
 
 	db := cache.NewBolt()
 	db.Open(dst)
