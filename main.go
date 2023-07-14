@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -57,6 +58,10 @@ func main() {
 	}
 	fmt.Println("--------------------------------")
 	fmt.Println("下载bangumi数据")
+
+	sort.Slice(release.Assets, func(i, j int) bool {
+		return release.Assets[i].UpdatedAt.After(release.Assets[j].UpdatedAt)
+	})
 	filename := release.Assets[0].Name
 	result := download(release.Assets[0].BrowserDownloadUrl, release.Assets[0].Size, filename)
 	if !result {
